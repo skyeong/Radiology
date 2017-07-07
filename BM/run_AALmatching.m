@@ -9,28 +9,12 @@ DATApath = fullfile(PROJpath,'metastasis');
 RADIUS = 15;
 
 % specify list
+%--------------------------------------------------------------------------
 fn_list = fullfile(PROJpath,'Breast cancer mets 20170121.xlsx');
 T = readtable(fn_list);
-
 subjlist = T.serialNumber;
-
-% Independent variable for LR
-%--------------------------------------------------------------------------
 Age = T.age;
 Dx  = T.Dx;
-% X = [Age, TripleNega,HER2,luminal];
-geneType={'TripleNega','HER2','luminal'};
-Y = cell(0);
-for i=1:100,
-    if  T.Basal(i)==1,
-        Y{i} = 'TripleNega';
-    elseif T.HER2(i) ==1,
-        Y{i} = 'HER2';
-    elseif T.luminal(i)==1,
-        Y{i} = 'luminal';
-    end
-end
-Y = categorical(Y)';
 
 
 % Load template
@@ -78,61 +62,122 @@ Dx(idremove) = [];
 CNT(idremove,:) = [];
 
 
-% Crosstab analysis (3groups)
+
+% Triple Negative: Crosstab analysis
 %--------------------------------------------------------------------------
-% Dx: 1(luminal), 2(basal), 3(her2)
-unitVol = 0.1*RADIUS*RADIUS*pi;
-Pval = zeros(nroi,1);
-Chi2 = zeros(nroi,1);
+unitVol = (1./4)*RADIUS*RADIUS*pi;
+Pval_TN = zeros(nroi,1);
+Chi2_TN = zeros(nroi,1);
+fn = 'basal.csv';
+fid = fopen(fn,'w+');
+fprintf(fid,'basal (pct),non-basal (pct), chi2, p\n');
 for i=1:nroi,
     BM_at_roi = CNT(:,i)>unitVol;
-    [tbl,chi2,p] = crosstab(BM_at_roi,Dx);
-    Pval(i) = p;
-    Chi2(i) = chi2;
+    [tbl,chi2,p] = crosstab(BM_at_roi,T.Basal);
+    Pval_TN(i) = p;
+    Chi2_TN(i) = chi2;
     
-    if p<0.05,
-       fprintf('triple neg: %.2f, her2: %.2f, luminal: %.2f\n',100*mean(BM_at_roi(Dx==2)) ,100*mean(BM_at_roi(Dx==3)), 100*mean(BM_at_roi(Dx==1))) ;
-    end
+    fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.Basal==1)) ,100*mean(BM_at_roi(T.Basal==0)),chi2,p);
 end
-[h, crit_p, adj_ci_cvrg, adj_p] = fdr_bh(Pval);
-[find(Pval<0.05) Pval(Pval<0.05) adj_p(Pval<0.05)]
+fclose(fid);
+[h, crit_p, adj_ci_cvrg, adj_p] = fdr_bh(Pval_TN);
+[find(Pval_TN<0.05) Pval_TN(Pval_TN<0.05) adj_p(Pval_TN<0.05)];
+length(find(Pval_TN<0.05))
+PCT_Basal = 100*sum(CNT(T.Basal==1,:)>unitVol)/sum(T.Basal);
+[val,id]=sort(PCT_Basal,'descend');
 
-
-
-vo_out = vo_atlas;
-vo_out.fname='overlap_aal.nii';
-vo_out.dt=[16,0];
-IMG = zeros(vo_atlas.dim);
-pctOverlap = 100*mean(CNT>unitVol);
+% Luminal: Crosstab analysis
+%--------------------------------------------------------------------------
+Pval_LU = zeros(nroi,1);
+Chi2_LU = zeros(nroi,1);
+fn = 'luminal.csv';
+fid = fopen(fn,'w+');
+fprintf(fid,'luminal (pct),non-luminal (pct), chi2, p\n');
 for i=1:nroi,
-   idx = find(atlas==i);
-   IMG(idx)=pctOverlap(i);
+    BM_at_roi = CNT(:,i)>unitVol;
+    [tbl,chi2,p] = crosstab(BM_at_roi,T.luminal);
+    Pval_LU(i) = p;
+    Chi2_LU(i) = chi2;
+    
+    fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.luminal==1)) ,100*mean(BM_at_roi(T.luminal==0)),chi2,p);
 end
-spm_write_vol(vo_out,IMG);
+fclose(fid);
+[h, crit_p, adj_ci_cvrg, adj_p] = fdr_bh(Pval_LU);
+[find(Pval_LU<0.05) Pval_LU(Pval_LU<0.05) adj_p(Pval_LU<0.05)];
+length(find(Pval_LU<0.05))
+PCT_Luminal = 100*sum(CNT(T.luminal==1,:)>unitVol)/sum(T.luminal);
+[val,id]=sort(PCT_Luminal,'descend');
+
+
+
+% HER2+: Crosstab analysis
+%--------------------------------------------------------------------------
+Pval_HER2 = zeros(nroi,1);
+Chi2_HER2 = zeros(nroi,1);
+fn = 'her2.csv';
+fid = fopen(fn,'w+');
+fprintf(fid,'her2 (pct),non-her2 (pct), chi2, p\n');
+for i=1:nroi,
+    BM_at_roi = CNT(:,i)>unitVol;
+    [tbl,chi2,p] = crosstab(BM_at_roi,T.HER2);
+    Pval_HER2(i) = p;
+    Chi2_HER2(i) = chi2;
+    
+    fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.HER2==1)) ,100*mean(BM_at_roi(T.HER2==0)),chi2,p);
+end
+fclose(fid);
+% [h, crit_p, adj_ci_cvrg, adj_p] = fdr_bh(Pval_HER2);
+adj_p = Pval_HER2*116;
+[find(Pval_HER2<0.05) Pval_HER2(Pval_HER2<0.05) adj_p(Pval_HER2<0.05)];
+length(find(Pval_HER2<0.05))
+PCT_HER2 = 100*sum(CNT(T.HER2==1,:)>unitVol)/sum(T.HER2);
+[val,id]=sort(PCT_HER2,'descend');
+
 
 
 return
 
-
-% Crosstab analysis
-%--------------------------------------------------------------------------
-luminal = ordinal(T.luminal,{'none','luminal'},[],[0,0.5,1.5]);
-HER2 = ordinal(T.HER2,{'none','HER2'},[],[0,0.5,1.5]);
-TripleNega = ordinal(T.Basal,{'none','TripleNega'},[],[0,0.5,1.5]);
-
-
-
-ODDs = zeros(nroi,1);
-PVAL = zeros(nroi,1);
+vo_out = vo_atlas;
+vo_out.fname='overlap_all.nii';
+vo_out.dt=[16,0];
+IMG = zeros(vo_atlas.dim);
+pctOverlap = 100*mean(CNT>unitVol);
 for i=1:nroi,
-    X = [CNT(:,i)>unitVol];
-    % [B,dev,stats] = mnrfit(X,luminal,'model','ordinal','interactions','off');
-    % [B,dev,stats] = mnrfit(X,HER2,'model','ordinal','interactions','off');
-    [B,dev,stats] = mnrfit(X,TripleNega,'model','ordinal','interactions','off');
-    ODDs(i) = exp(B(2));
-    PVAL(i) = stats.p(2);
+    idx = find(atlas==i);
+    IMG(idx)=pctOverlap(i);
 end
-[h, crit_p, adj_ci_cvrg, adj_p] = fdr_bh(PVAL);
-[find(PVAL<0.05) PVAL(PVAL<0.05) adj_p(PVAL<0.05)]
+spm_write_vol(vo_out,IMG);
+
+vo_out = vo_atlas;
+vo_out.fname='overlap_basal.nii';
+vo_out.dt=[16,0];
+IMG = zeros(vo_atlas.dim);
+pctOverlap = 100*mean(CNT(T.Basal==1,:)>unitVol);
+for i=1:nroi,
+    idx = find(atlas==i);
+    IMG(idx)=pctOverlap(i);
+end
+spm_write_vol(vo_out,IMG);
 
 
+vo_out = vo_atlas;
+vo_out.fname='overlap_her2.nii';
+vo_out.dt=[16,0];
+IMG = zeros(vo_atlas.dim);
+pctOverlap = 100*mean(CNT(T.HER2==1,:)>unitVol);
+for i=1:nroi,
+    idx = find(atlas==i);
+    IMG(idx)=pctOverlap(i);
+end
+spm_write_vol(vo_out,IMG);
+
+vo_out = vo_atlas;
+vo_out.fname='overlap_luminal.nii';
+vo_out.dt=[16,0];
+IMG = zeros(vo_atlas.dim);
+pctOverlap = 100*mean(CNT(T.luminal==1,:)>unitVol);
+for i=1:nroi,
+    idx = find(atlas==i);
+    IMG(idx)=pctOverlap(i);
+end
+spm_write_vol(vo_out,IMG);

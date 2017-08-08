@@ -70,14 +70,15 @@ Pval_TN = zeros(nroi,1);
 Chi2_TN = zeros(nroi,1);
 fn = 'basal.csv';
 fid = fopen(fn,'w+');
-fprintf(fid,'basal (pct),non-basal (pct), chi2, p\n');
+fprintf(fid,'basal (cnt),non-basal (cnt), chi2, p\n');
 for i=1:nroi,
     BM_at_roi = CNT(:,i)>vx_thr;
     [tbl,chi2,p] = crosstab(BM_at_roi,T.Basal);
     Pval_TN(i) = p;
     Chi2_TN(i) = chi2;
     
-    fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.Basal==1)) ,100*mean(BM_at_roi(T.Basal==0)),chi2,p);
+    %fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.Basal==1)) ,100*mean(BM_at_roi(T.Basal==0)),chi2,p);
+    fprintf(fid,'%d, %d, %.2f, %.3f\n',sum(BM_at_roi(T.Basal==1)), sum(BM_at_roi(T.Basal==0)),chi2,p);
 end
 fclose(fid);
 [h, crit_p, adj_ci_cvrg, adj_p] = fdr_bh(Pval_TN);
@@ -94,14 +95,15 @@ Pval_HER2 = zeros(nroi,1);
 Chi2_HER2 = zeros(nroi,1);
 fn = 'her2.csv';
 fid = fopen(fn,'w+');
-fprintf(fid,'her2 (pct),non-her2 (pct), chi2, p\n');
+fprintf(fid,'her2 (cnt),non-her2 (cnt), chi2, p\n');
 for i=1:nroi,
     BM_at_roi = CNT(:,i)>vx_thr;
     [tbl,chi2,p] = crosstab(BM_at_roi,T.HER2);
     Pval_HER2(i) = p;
     Chi2_HER2(i) = chi2;
     
-    fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.HER2==1)) ,100*mean(BM_at_roi(T.HER2==0)),chi2,p);
+    %fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.HER2==1)) ,100*mean(BM_at_roi(T.HER2==0)),chi2,p);
+    fprintf(fid,'%d, %d, %.2f, %.3f\n', sum(BM_at_roi(T.HER2==1)), sum(BM_at_roi(T.HER2==0)),chi2,p);
 end
 fclose(fid);
 % [h, crit_p, adj_ci_cvrg, adj_p] = fdr_bh(Pval_HER2);
@@ -118,14 +120,15 @@ Pval_LU = zeros(nroi,1);
 Chi2_LU = zeros(nroi,1);
 fn = 'luminal.csv';
 fid = fopen(fn,'w+');
-fprintf(fid,'luminal (pct),non-luminal (pct), chi2, p\n');
+fprintf(fid,'luminal (cnt),non-luminal (cnt), chi2, p\n');
 for i=1:nroi,
     BM_at_roi = CNT(:,i)>vx_thr;
     [tbl,chi2,p] = crosstab(BM_at_roi,T.luminal);
     Pval_LU(i) = p;
     Chi2_LU(i) = chi2;
     
-    fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.luminal==1)) ,100*mean(BM_at_roi(T.luminal==0)),chi2,p);
+    %fprintf(fid,'%.2f, %.2f, %.2f, %.3f\n',100*mean(BM_at_roi(T.luminal==1)) ,100*mean(BM_at_roi(T.luminal==0)),chi2,p);
+    fprintf(fid,'%d, %d, %.2f, %.3f\n',sum(BM_at_roi(T.luminal==1)), sum(BM_at_roi(T.luminal==0)), chi2, p);
 end
 fclose(fid);
 [h, crit_p, adj_ci_cvrg, adj_p] = fdr_bh(Pval_LU);
